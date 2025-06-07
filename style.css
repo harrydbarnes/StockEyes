@@ -1,0 +1,61 @@
+/* Basic body styling */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+/* Main header (h1) styling */
+header h1 {
+    background-color: #333;
+    color: #fff;
+    padding: 1rem 0;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+/* Section headers (h2) styling */
+section h2 {
+    color: #333;
+    border-bottom: 2px solid #333;
+    padding-bottom: 0.5rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+/* Main content area layout */
+main {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+}
+
+/* Section styling */
+section {
+    background-color: #fff;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Placeholder styling for stock ticker elements */
+.stock-ticker {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+
+/* Styling for the search input in Custom Watchlist */
+#custom-watchlist input[type="search"] {
+    width: calc(100% - 22px); /* Account for padding and border */
+    padding: 10px;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
