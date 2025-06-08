@@ -8,7 +8,7 @@ const keyMarketTickers = [
 ];
 
 const mainPlayers = [
-    { symbol: 'AAPL', name: 'Apple Inc.', price: '175.20', change: '-0.2%', trend: 'down' },
+    { symbol: 'AAPL', name: 'Apple Inc.', price: '175.20', change: '-0.2%', trend: 'down' }, // trend already has arrow
     { symbol: 'MSFT', name: 'Microsoft Corp.', price: '330.50', change: '+1.1%', trend: 'up' },
     { symbol: 'GOOGL', name: 'Alphabet Inc.', price: '2,750.80', change: '+0.7%', trend: 'up' },
     { symbol: 'AMZN', name: 'Amazon.com Inc.', price: '3,300.00', change: '-0.5%', trend: 'down' },
@@ -53,42 +53,71 @@ function displayData(sectionId, data) {
         return;
     }
 
-    // Clear previous content except for specific elements like search input or headers
-    let child = sectionElement.lastElementChild;
-    while (child) {
-        if (child.tagName !== 'H2' && child.id !== 'watchlist-search' && child.id !== 'watchlist-results' && child.tagName !== 'BUTTON') {
+    let dataContainer = sectionElement;
+    if (sectionId === 'custom-watchlist') {
+        dataContainer = document.getElementById('watchlist-results') || createWatchlistResultsContainer(sectionElement);
+    } else if (sectionId === 'key-market-tickers-content') {
+        // Special case for header tickers
+    } else {
+        // Clear previous content for regular sections, leaving H2
+        let child = sectionElement.lastElementChild;
+        while (child && child.tagName !== 'H2') {
             sectionElement.removeChild(child);
-        }
-        child = sectionElement.lastElementChild;
-        if (child && (child.tagName === 'H2' || child.id === 'watchlist-search' || child.id === 'watchlist-results' || child.tagName === 'BUTTON')) {
-            break;
+            child = sectionElement.lastElementChild;
         }
     }
 
-    const dataContainer = sectionId === 'custom-watchlist' ?
-        (document.getElementById('watchlist-results') || createWatchlistResultsContainer(sectionElement))
-        : sectionElement;
-
-    if (sectionId === 'custom-watchlist' && data.length === 0 && document.getElementById('watchlist-search').value.trim() === '') {
-        // Do not display anything if search is empty and no initial data for watchlist
+    if (sectionId === 'custom-watchlist' && document.getElementById('watchlist-search').value.trim() === '' && data.length === 0) {
+         if(dataContainer) dataContainer.innerHTML = '';
         return;
     }
 
     data.forEach(item => {
         const itemDiv = document.createElement('div');
-        itemDiv.className = 'stock-item stock-ticker'; // Added stock-ticker for styling
+        itemDiv.className = 'stock-item';
 
-        if (sectionId === 'key-market-tickers') { // Special handling for key market tickers
-            itemDiv.innerHTML = `<strong>${item.name}:</strong> ${item.value} (${item.change})`;
-        } else if (sectionId === 'little-dippers') {
-            itemDiv.innerHTML = `<strong>${item.symbol} (${item.name})</strong>: ${item.price} (${item.change}) <small>3M: ${item.threeMonthPerf}</small>`;
-        } else if (item.symbol) { // For most stock sections
-            itemDiv.innerHTML = `<strong>${item.symbol} (${item.name})</strong>: ${item.price} (${item.change})`;
-            if (item.trend) {
-                itemDiv.innerHTML += ` <span class="trend-${item.trend}">${item.trend === 'up' ? '▲' : '▼'}</span>`;
+        const changeString = item.change || '';
+        let changeClass = '';
+        let arrowIcon = '';
+
+        if (changeString.startsWith('+')) {
+            changeClass = 'stock-positive';
+            arrowIcon = '▲ '; // Upward arrow
+        } else if (changeString.startsWith('-')) {
+            changeClass = 'stock-negative';
+            arrowIcon = '▼ '; // Downward arrow
+        }
+        // For keyMarketTickers, item.trend is not present.
+        // For mainPlayers, item.trend is present and already adds an arrow, so we avoid double arrows.
+        const trendArrow = item.trend ? `<span class="trend-${item.trend}">${item.trend === 'up' ? '▲' : '▼'}</span>` : '';
+        // If item.trend is present, we use its arrow and don't add another one from changeString for mainPlayers.
+        // For other sections, arrowIcon will be based on changeString.
+        const displayArrow = item.trend ? '' : arrowIcon; // Only show arrowIcon if no trend arrow
+
+        if (sectionId === 'key-market-tickers-content') {
+            // For header, keep it simple, arrowIcon will apply from changeString
+            itemDiv.innerHTML = `<strong>${item.name}:</strong> <span class="price">${item.value}</span> <span class="change ${changeClass}">${displayArrow}${item.change}</span>`;
+        } else {
+            itemDiv.innerHTML = `
+                <div class="info">
+                    <strong>${item.symbol}</strong>
+                    <span class="company-name">${item.name}</span>
+                </div>
+                <div class="data">
+                    <span class="price">${item.price}</span>
+                    <span class="change ${changeClass}">${displayArrow}${item.change}</span>
+                    ${trendArrow} {/* This is for mainPlayers trend indicator, already has arrow */}
+                </div>
+            `;
+            if (sectionId === 'little-dippers' && item.threeMonthPerf) {
+                const dataDiv = itemDiv.querySelector('.data');
+                if(dataDiv) {
+                    const perfSpan = document.createElement('span');
+                    perfSpan.className = 'three-month-perf'; // Added class for styling
+                    perfSpan.textContent = `3M: ${item.threeMonthPerf}`;
+                    dataDiv.appendChild(perfSpan);
+                }
             }
-        } else { // Fallback for other data structures
-            itemDiv.innerHTML = `<strong>${item.name || 'N/A'}</strong>: ${item.value || item.price || 'N/A'}`;
         }
         dataContainer.appendChild(itemDiv);
     });
@@ -104,29 +133,23 @@ function createWatchlistResultsContainer(watchlistSection) {
     return resultsDiv;
 }
 
-
-// 3d. Implement search functionality for "Custom Watchlist"
 function setupWatchlistSearch() {
     const searchInput = document.getElementById('watchlist-search');
-    const watchlistSection = document.getElementById('custom-watchlist');
-
-    if (!searchInput || !watchlistSection) {
-        console.error('Search input or watchlist section not found.');
+    if (!searchInput) {
+        console.error('Search input not found.');
         return;
     }
 
     let resultsContainer = document.getElementById('watchlist-results');
-    if (!resultsContainer) {
-        resultsContainer = createWatchlistResultsContainer(watchlistSection);
+    if (!resultsContainer && document.getElementById('custom-watchlist')) {
+        resultsContainer = createWatchlistResultsContainer(document.getElementById('custom-watchlist'));
     }
 
     searchInput.addEventListener('keyup', function(event) {
         const searchTerm = event.target.value.toLowerCase().trim();
-        resultsContainer.innerHTML = ''; // Clear previous results
+        if (resultsContainer) resultsContainer.innerHTML = '';
 
         if (searchTerm === '') {
-            // Optionally, display some initial items or nothing
-            // displayData('custom-watchlist', []); // Clears or displays initial if modified
             return;
         }
 
@@ -138,39 +161,50 @@ function setupWatchlistSearch() {
     });
 }
 
-
-// 3e. Placeholder for Refresh Data button functionality
 function setupRefreshButton() {
     const refreshButton = document.getElementById('refresh-data-btn');
     if (refreshButton) {
         refreshButton.addEventListener('click', function() {
             console.log('Data refresh clicked');
-            // Re-populate data
             populateAllData();
-            // Clear search if needed
             const searchInput = document.getElementById('watchlist-search');
             if(searchInput) searchInput.value = '';
-            // Ensure watchlist results are cleared if search is cleared
             const watchlistResults = document.getElementById('watchlist-results');
             if (watchlistResults) watchlistResults.innerHTML = '';
-
         });
     }
 }
 
-// Helper function to populate all sections
 function populateAllData() {
-    displayData('key-market-tickers-content', keyMarketTickers); // Target specific div for key tickers
+    const headerTickerContainer = document.getElementById('key-market-tickers-content');
+    if(headerTickerContainer) headerTickerContainer.innerHTML = '';
+
+    displayData('key-market-tickers-content', keyMarketTickers);
     displayData('main-players', mainPlayers);
     displayData('huge-risers', hugeRisers);
     displayData('big-dippers', bigDippers);
     displayData('little-dippers', littleDippers);
-    // displayData('custom-watchlist', []); // Initially empty or show some default items
+
+    const searchInput = document.getElementById('watchlist-search');
+    const watchlistResults = document.getElementById('watchlist-results');
+    if (searchInput && searchInput.value === '' && watchlistResults) {
+        watchlistResults.innerHTML = '';
+    }
 }
 
-// Run functions on page load
 document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('custom-watchlist')) {
+       createWatchlistResultsContainer(document.getElementById('custom-watchlist'));
+    }
+
     populateAllData();
     setupWatchlistSearch();
     setupRefreshButton();
+
+    const stockEvaluatorSection = document.getElementById('stock-evaluator');
+    if (stockEvaluatorSection && stockEvaluatorSection.children.length <=1 ) {
+        const p = document.createElement('p');
+        p.textContent = 'Stock Evaluator functionality coming soon.';
+        stockEvaluatorSection.appendChild(p);
+    }
 });
